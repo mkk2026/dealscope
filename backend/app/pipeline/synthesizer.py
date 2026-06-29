@@ -13,6 +13,7 @@ import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
 
+from app.config import settings
 from app.llm.client import LLMClient, synthesis_client
 from app.pipeline.jsonparse import extract_json_object
 from app.pipeline.models import CATEGORIES, Fact, Memo, Risk, Verdict
@@ -110,11 +111,14 @@ async def synthesize(url: str, facts: list[Fact], client: LLMClient | None = Non
         return SynthesisResult(memo=memo)
 
     client = client or synthesis_client()
+    # Cap facts sent to the prompt (highest-confidence first) so a fact-rich company
+    # can't overflow the model into an empty verdict. ALL facts still go into the memo.
+    top_facts = sorted(facts, key=lambda f: f.confidence, reverse=True)[:settings.synth_max_facts]
     completion = await client.complete(
         system=_SYSTEM,
-        user=f"Company URL: {url}\n\nExtracted facts:\n{_facts_payload(facts)}",
+        user=f"Company URL: {url}\n\nExtracted facts:\n{_facts_payload(top_facts)}",
         temperature=0.3,
-        max_tokens=2500,
+        max_tokens=3000,
         json_mode=True,
     )
     memo = _build_memo(url, facts, extract_json_object(completion.text))

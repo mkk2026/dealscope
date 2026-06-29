@@ -1,9 +1,9 @@
 """One OpenAI-compatible client that fronts every model we use.
 
-The self-hosted AMD-pod model (vLLM/Ollama) and Fireworks both speak the
-OpenAI chat-completions API, so a single client class — pointed at different
-base URLs — covers all three stages. Token usage comes back on every call so
-the UI can show the AMD-vs-frontier cost story.
+Both stages run on AMD-hosted models via Fireworks — a cheap one for bulk
+extraction, a premium one for synthesis. Same client class, different model.
+Token usage (input + output, separately) comes back on every call so the cost
+race can be computed from real numbers.
 """
 
 from dataclasses import dataclass
@@ -38,11 +38,17 @@ class LLMClient:
         temperature: float = 0.2,
         max_tokens: int = 1024,
         json_mode: bool = False,
+        reasoning_effort: str | None = None,
     ) -> Completion:
-        # JSON mode forces valid-JSON output, which is what stops these reasoning
-        # models from leaking chain-of-thought into the answer. vLLM and Fireworks
-        # both honor response_format.
-        extra = {"response_format": {"type": "json_object"}} if json_mode else {}
+        # JSON mode forces valid-JSON output, which stops reasoning models from
+        # leaking chain-of-thought into the answer. reasoning_effort="low" keeps
+        # gpt-oss fast + cheap for the high-volume extraction stage. Fireworks
+        # honors both; unknown params are ignored by models that don't use them.
+        extra: dict = {}
+        if json_mode:
+            extra["response_format"] = {"type": "json_object"}
+        if reasoning_effort:
+            extra["reasoning_effort"] = reasoning_effort
         resp = await self._client.chat.completions.create(
             model=self.model,
             messages=[
@@ -62,20 +68,20 @@ class LLMClient:
 
 
 def extractor_client() -> LLMClient:
-    """Stage 1 — the cheap, high-volume workhorse on the AMD GPU pod."""
+    """Stage 1 — the cheap, high-volume model (gpt-oss-120b) on AMD via Fireworks."""
     return LLMClient(
-        base_url=settings.amd_base_url,
-        api_key=settings.amd_api_key,
-        model=settings.amd_model,
-        label="amd-pod",
+        base_url=settings.fireworks_base_url,
+        api_key=settings.fireworks_api_key,
+        model=settings.extract_model,
+        label="extract",
     )
 
 
 def synthesis_client() -> LLMClient:
-    """Stages 2-3 — the premium model on Fireworks (AMD hardware)."""
+    """Stage 2 — the premium model (deepseek-v4-pro) on AMD via Fireworks."""
     return LLMClient(
         base_url=settings.fireworks_base_url,
         api_key=settings.fireworks_api_key,
-        model=settings.fireworks_model,
-        label="fireworks",
+        model=settings.synth_model,
+        label="synth",
     )

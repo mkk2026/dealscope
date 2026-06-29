@@ -87,11 +87,11 @@ async def extract_facts(
                 system=_SYSTEM,
                 user=_build_user(doc, settings.extract_max_chars),
                 temperature=0.1,
-                # Reasoning models (deepseek/glm/kimi on Fireworks) spend tokens thinking
-                # before the JSON lands; give them room so extraction never truncates to
-                # empty. Non-reasoning pod models (Qwen) stop early and don't use the slack.
                 max_tokens=2500,
                 json_mode=True,
+                # Keep gpt-oss in low-reasoning mode: fast, cheap, and it stops leaking
+                # chain-of-thought so the JSON lands cleanly on the high-volume stage.
+                reasoning_effort="low",
             )
         facts = _coerce_facts(completion.text, doc.url)
         if on_event:
@@ -99,7 +99,8 @@ async def extract_facts(
                 await on_event({"type": "fact", "category": f.category, "claim": f.claim,
                                 "source_url": f.source_url, "confidence": f.confidence})
             await on_event({"type": "page", "url": doc.url, "facts": len(facts),
-                            "tokens": completion.prompt_tokens + completion.completion_tokens})
+                            "tokens_in": completion.prompt_tokens,
+                            "tokens_out": completion.completion_tokens})
         return facts, completion
 
     result = ExtractionResult()

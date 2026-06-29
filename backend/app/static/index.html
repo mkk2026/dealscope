@@ -25,27 +25,25 @@
       <div class="stage" data-stage="synthesize"><span class="led"></span> Synthesize <small>(Fireworks)</small></div>
     </section>
 
-    <!-- Center: THE HERO — cost race + GPU working -->
+    <!-- Center: THE HERO — cost race via model routing on AMD/Fireworks -->
     <section id="hero">
-      <div class="hero-title">COST&nbsp;RACE</div>
+      <div class="hero-title">COST&nbsp;RACE &nbsp;·&nbsp; same screen, two ways</div>
       <div class="race">
-        <div class="meter frontier">
-          <div class="label">Hosted endpoint</div>
-          <div class="val" id="frontier-usd">$0.0000</div>
+        <div class="meter naive">
+          <div class="label">Naive · premium model for every page</div>
+          <div class="val" id="naive-usd">$0.0000</div>
         </div>
         <div class="savings"><span id="savings">—</span><small>cheaper</small></div>
-        <div class="meter amd">
-          <div class="label">DealScope on AMD</div>
-          <div class="val" id="amd-usd">$0.0000</div>
+        <div class="meter routed">
+          <div class="label">DealScope · routed</div>
+          <div class="val" id="routed-usd">$0.0000</div>
         </div>
       </div>
-      <div class="gpu">
-        <canvas id="gauge" width="120" height="120"></canvas>
-        <div class="gpu-readout">
-          <div><span id="gpu-util">—</span><small>GPU util</small></div>
-          <div><span id="tps">—</span><small>tokens/sec</small></div>
-        </div>
-        <canvas id="spark" width="280" height="70"></canvas>
+      <div class="routing">
+        <span class="badge">Extract · gpt-oss-120b</span>
+        <span class="arrow">→</span>
+        <span class="badge premium">Synthesize · deepseek-v4-pro</span>
+        <span class="amd-note"><b id="tok">0</b> tokens · AMD Instinct via Fireworks</span>
       </div>
     </section>
   </main>
@@ -58,6 +56,13 @@
   </section>
 
   <div id="status"></div>
+
+  <!-- Example screens — recorded runs of recognizable startups; click to replay above -->
+  <section id="examples">
+    <h2>Example screens</h2>
+    <p class="examples-sub">Real, source-traceable screens of recognizable startups. Click one to replay it in the panel above.</p>
+    <div class="cards" id="example-cards"></div>
+  </section>
 
   <script src="/static/app.js"></script>
 </body>

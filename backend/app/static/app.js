@@ -4,7 +4,6 @@ const CATS = ["overview", "engineering", "hiring", "market", "traction"];
 const $ = (id) => document.getElementById(id);
 
 let es = null;
-let tps = [];                 // tokens/sec history for the sparkline
 const factsByCat = {};        // category -> [fact]
 
 document.getElementById("screen-form").addEventListener("submit", (e) => {
@@ -28,21 +27,18 @@ function start(streamUrl) {
 }
 
 function resetUI() {
-  tps = [];
   for (const k of Object.keys(factsByCat)) delete factsByCat[k];
   document.querySelectorAll(".stage").forEach((s) => { s.className = "stage"; });
   $("c-collect").textContent = ""; $("c-extract").textContent = "";
-  setText("frontier-usd", "$0.0000"); setText("amd-usd", "$0.0000");
-  setText("savings", "—"); setText("gpu-util", "—"); setText("tps", "—");
+  setText("naive-usd", "$0.0000"); setText("routed-usd", "$0.0000");
+  setText("savings", "—"); setText("tok", "0");
   $("memo").hidden = true; $("verdict").innerHTML = ""; $("sections").innerHTML = ""; $("risk").innerHTML = "";
-  drawGauge(0, false); drawSpark();
 }
 
 function handle(ev) {
   switch (ev.type) {
     case "stage": return onStage(ev);
     case "fact": return onFact(ev);
-    case "metric": return onMetric(ev);
     case "cost": return onCost(ev);
     case "memo": return onMemo(ev);
     case "done": $("status").textContent = "done"; $("go").disabled = false; if (es) es.close(); return;
@@ -65,19 +61,11 @@ function onFact(ev) {
   $("c-extract").textContent = n;
 }
 
-function onMetric(ev) {
-  if (ev.gpu_util != null) { setText("gpu-util", Math.round(ev.gpu_util * 100) + "%"); drawGauge(ev.gpu_util, true); }
-  else { setText("gpu-util", "n/a"); drawGauge(0.0, false); }
-  if (ev.tokens_per_sec != null) {
-    setText("tps", Math.round(ev.tokens_per_sec));
-    tps.push(ev.tokens_per_sec); if (tps.length > 60) tps.shift(); drawSpark();
-  }
-}
-
 function onCost(ev) {
-  tween("frontier-usd", ev.frontier_usd, (v) => "$" + v.toFixed(4));
-  tween("amd-usd", ev.amd_usd, (v) => "$" + v.toFixed(4));
+  tween("naive-usd", ev.naive_usd, (v) => "$" + v.toFixed(4));
+  tween("routed-usd", ev.routed_usd, (v) => "$" + v.toFixed(4));
   if (ev.savings_x) setText("savings", ev.savings_x + "×");
+  if (ev.tokens != null) setText("tok", ev.tokens.toLocaleString());
 }
 
 function onMemo(ev) {
@@ -124,28 +112,33 @@ function tween(id, target, fmt) {
   requestAnimationFrame(step);
 }
 
-function drawGauge(frac, live) {
-  const c = $("gauge"), x = c.getContext("2d"), R = 50, cx = 60, cy = 60;
-  x.clearRect(0, 0, 120, 120);
-  x.lineWidth = 12; x.lineCap = "round";
-  x.strokeStyle = "#232b3b"; x.beginPath(); x.arc(cx, cy, R, 0.75 * Math.PI, 2.25 * Math.PI); x.stroke();
-  if (live) {
-    x.strokeStyle = frac > 0.7 ? "#ff4d4d" : "#ffb020";
-    x.beginPath(); x.arc(cx, cy, R, 0.75 * Math.PI, (0.75 + 1.5 * frac) * Math.PI); x.stroke();
-  }
-  x.fillStyle = "#e6edf6"; x.font = "700 20px ui-sans-serif"; x.textAlign = "center";
-  x.fillText(live ? Math.round(frac * 100) + "%" : "—", cx, cy + 7);
+/* ---------- example screens (in-page gallery) ---------- */
+function recClass(r) {
+  const s = (r || "").toLowerCase();
+  if (s.includes("call")) return "rec-call";
+  if (s.includes("pass")) return "rec-pass";
+  return "rec-border";
 }
 
-function drawSpark() {
-  const c = $("spark"), x = c.getContext("2d"), W = 280, H = 70;
-  x.clearRect(0, 0, W, H);
-  if (tps.length < 2) return;
-  const max = Math.max(...tps, 1);
-  x.strokeStyle = "#38d39f"; x.lineWidth = 2; x.beginPath();
-  tps.forEach((v, i) => {
-    const px = (i / (tps.length - 1)) * W, py = H - (v / max) * (H - 8) - 4;
-    i ? x.lineTo(px, py) : x.moveTo(px, py);
-  });
-  x.stroke();
+function loadExamples() {
+  const wrap = $("example-cards");
+  if (!wrap) return;
+  fetch("/api/screens").then((r) => r.json()).then((list) => {
+    wrap.innerHTML = list.map((s) => `
+      <button class="card" data-replay="${esc(s.name)}">
+        <div class="host">${esc(s.host)}</div>
+        <span class="rec ${recClass(s.recommendation)}">${esc(s.recommendation)} — ${s.score}/100</span>
+        <div class="meta">
+          <span><b>${s.facts}</b> facts</span>
+          <span><b>${s.confidence}</b> conf</span>
+          ${s.savings_x ? `<span><b>${s.savings_x}×</b> cheaper</span>` : ""}
+        </div>
+      </button>`).join("");
+    wrap.querySelectorAll(".card").forEach((c) => c.addEventListener("click", () => {
+      start("/screen/stream?replay=" + encodeURIComponent(c.dataset.replay));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }));
+  }).catch(() => {});
 }
+
+loadExamples();

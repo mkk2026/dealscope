@@ -13,15 +13,12 @@ _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
-    # Stage 1 — bulk extraction on a self-hosted model (AMD Instinct GPU pod).
-    amd_base_url: str = "http://localhost:8000/v1"
-    amd_api_key: str = "not-needed"
-    amd_model: str = "Qwen/Qwen2.5-7B-Instruct"  # non-gated; Llama-3.1-8B needs HF license
-
-    # Stages 2-3 — Fireworks AI (AMD-hardware models).
+    # Both stages run on AMD-hosted models via Fireworks. The routing IS the product:
+    # bulk extraction on a cheap model, synthesis on a premium one.
     fireworks_base_url: str = "https://api.fireworks.ai/inference/v1"
     fireworks_api_key: str = ""
-    fireworks_model: str = "accounts/fireworks/models/deepseek-v4-pro"
+    extract_model: str = "accounts/fireworks/models/gpt-oss-120b"      # cheap, high-volume
+    synth_model: str = "accounts/fireworks/models/deepseek-v4-pro"     # premium, one call
 
     # Optional — a GitHub token lifts the public API rate limit from 60 to 5000/hr.
     # Read-only / public scope is plenty. Leave blank to run unauthenticated.
@@ -34,13 +31,11 @@ class Settings(BaseSettings):
 
     # Extraction knobs.
     extract_max_chars: int = 6000   # per-page text cap sent to the model
-    extract_concurrency: int = 4    # parallel extraction calls to the pod
+    extract_concurrency: int = 4    # parallel extraction calls
 
-    # Cost-race demo inputs. Real values arrive once the pod is up; until then these
-    # are flagged placeholders so the hero renders, and the recorded run carries truth.
-    amd_pod_hourly_usd: float = 2.00
-    amd_assumed_tokens_per_sec: float = 1500.0
-    amd_metrics_url: str = ""        # optional pod endpoint: {"gpu_util":0-1,"tokens_per_sec":N}
+    # Synthesis: cap facts sent to the verdict prompt (all facts still render in the
+    # memo) so a fact-rich company can't overflow the model and return no verdict.
+    synth_max_facts: int = 40
 
 
 settings = Settings()

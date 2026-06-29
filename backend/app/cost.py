@@ -1,80 +1,59 @@
-"""Cost instrumentation — the engine behind the demo's headline cost-race.
+"""Cost-race engine: naive single-model vs DealScope's routed approach.
 
-Design principle (from review): the AMD number must be a CONSEQUENCE of measured
-throughput, not a hardcoded slide. So `amd_rate_per_1m` is derived from the pod's
-hourly cost divided by the tokens/sec you actually measure on the Instinct GPU.
-That makes "$0.11 vs $2.40" reproducible and defensible, not an assertion.
+Both run on AMD-hosted models via Fireworks. The number is computed from REAL
+input/output token counts times published Fireworks per-1M-token rates — no
+estimation, fully reproducible by a skeptical judge.
 
-Keep the comparison apples-to-apples: price the SAME model (Llama-3.1-8B) on a
-hosted frontier endpoint vs on your AMD pod. That isolates the hardware/hosting
-variable, which is the real Application-of-Technology claim.
+The thesis: extraction is the high-volume stage (100+ pages). Route it to a cheap
+AMD model (gpt-oss-120b) and reserve the premium model (deepseek-v4-pro) for the
+single synthesis call. A naive pipeline uses the premium model for everything.
+
+Rates: USD per 1M tokens, Fireworks serverless standard tier (2026-06).
+Source: docs.fireworks.ai/serverless/pricing  — VERIFY before the demo.
 """
 
 from dataclasses import dataclass
 
-# Published per-1M-token USD rates. VERIFY against current provider pricing before
-# the demo — these are placeholders, and a wrong number on stage is worse than none.
-FRONTIER_8B_PER_1M = 0.20      # same-size model on a hosted frontier endpoint (VERIFY)
-FIREWORKS_SYNTH_PER_1M = 0.90  # the AMD-hardware synthesis model on Fireworks (VERIFY)
+# Cheap model — bulk extraction (gpt-oss-120b).
+EXTRACT_IN_PER_1M = 0.15
+EXTRACT_OUT_PER_1M = 0.60
+# Premium model — synthesis, and the "naive everything" baseline (deepseek-v4-pro).
+SYNTH_IN_PER_1M = 1.74
+SYNTH_OUT_PER_1M = 3.48
 
 
-@dataclass(frozen=True)
-class StageCost:
-    label: str          # "amd-pod" | "fireworks"
-    tokens: int
-    usd: float
-
-
-def cost_usd(tokens: int, rate_per_1m: float) -> float:
-    return tokens / 1_000_000 * rate_per_1m
-
-
-def amd_rate_per_1m(pod_hourly_usd: float, tokens_per_sec: float) -> float:
-    """Derive the AMD pod's effective $/1M tokens from measured throughput.
-
-    pod_hourly_usd: what the Instinct pod costs per hour.
-    tokens_per_sec: throughput you measured with rocm-smi / your own timing.
-    """
-    if tokens_per_sec <= 0:
-        return 0.0
-    tokens_per_hour = tokens_per_sec * 3600
-    return pod_hourly_usd / tokens_per_hour * 1_000_000
+def _cost(tok_in: int, tok_out: int, rate_in: float, rate_out: float) -> float:
+    return tok_in / 1_000_000 * rate_in + tok_out / 1_000_000 * rate_out
 
 
 @dataclass(frozen=True)
 class CostRace:
-    extraction_tokens: int
-    amd_usd: float            # extraction on the AMD pod (derived from throughput)
-    frontier_usd: float       # the SAME extraction on a hosted frontier endpoint
-    synth_tokens: int
-    synth_usd: float          # final memo synthesis on Fireworks
-    pod_hourly_usd: float
-    tokens_per_sec: float
+    extract_in: int
+    extract_out: int
+    synth_in: int
+    synth_out: int
 
     @property
-    def total_amd_path_usd(self) -> float:
-        return self.amd_usd + self.synth_usd
+    def routed_usd(self) -> float:
+        """Cheap model for extraction, premium for synthesis — what DealScope does."""
+        return (_cost(self.extract_in, self.extract_out, EXTRACT_IN_PER_1M, EXTRACT_OUT_PER_1M)
+                + _cost(self.synth_in, self.synth_out, SYNTH_IN_PER_1M, SYNTH_OUT_PER_1M))
+
+    @property
+    def naive_usd(self) -> float:
+        """Premium model for everything — the baseline DealScope beats."""
+        return (_cost(self.extract_in, self.extract_out, SYNTH_IN_PER_1M, SYNTH_OUT_PER_1M)
+                + _cost(self.synth_in, self.synth_out, SYNTH_IN_PER_1M, SYNTH_OUT_PER_1M))
 
     @property
     def savings_x(self) -> float:
-        """How many times cheaper the AMD extraction is vs frontier (the headline)."""
-        return self.frontier_usd / self.amd_usd if self.amd_usd > 0 else 0.0
+        return self.naive_usd / self.routed_usd if self.routed_usd > 0 else 0.0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.extract_in + self.extract_out + self.synth_in + self.synth_out
 
 
-def compute_race(
-    extraction_tokens: int,
-    synth_tokens: int,
-    pod_hourly_usd: float,
-    tokens_per_sec: float,
-) -> CostRace:
-    """Build the on-screen cost comparison from real token counts + measured throughput."""
-    amd_rate = amd_rate_per_1m(pod_hourly_usd, tokens_per_sec)
-    return CostRace(
-        extraction_tokens=extraction_tokens,
-        amd_usd=cost_usd(extraction_tokens, amd_rate),
-        frontier_usd=cost_usd(extraction_tokens, FRONTIER_8B_PER_1M),
-        synth_tokens=synth_tokens,
-        synth_usd=cost_usd(synth_tokens, FIREWORKS_SYNTH_PER_1M),
-        pod_hourly_usd=pod_hourly_usd,
-        tokens_per_sec=tokens_per_sec,
-    )
+def compute_race(extract_in: int, extract_out: int,
+                 synth_in: int = 0, synth_out: int = 0) -> CostRace:
+    return CostRace(extract_in, extract_out, synth_in, synth_out)

@@ -1,29 +1,33 @@
 import pytest
 
-from app.cost import FRONTIER_8B_PER_1M, amd_rate_per_1m, compute_race, cost_usd
+from app.cost import (
+    EXTRACT_IN_PER_1M,
+    SYNTH_IN_PER_1M,
+    compute_race,
+)
 
 
-def test_cost_usd():
-    assert cost_usd(1_000_000, 0.2) == pytest.approx(0.2)
-    assert cost_usd(0, 5.0) == 0.0
+def test_routed_extraction_uses_cheap_rate_naive_uses_premium():
+    # 1M extraction input tokens, nothing else.
+    r = compute_race(extract_in=1_000_000, extract_out=0)
+    assert r.routed_usd == pytest.approx(EXTRACT_IN_PER_1M)   # cheap model
+    assert r.naive_usd == pytest.approx(SYNTH_IN_PER_1M)      # premium model for same work
 
 
-def test_amd_rate_derived_from_throughput():
-    # $1/hr at 1000 tok/s -> 3.6M tok/hr -> ~$0.2778 / 1M
-    assert amd_rate_per_1m(1.0, 1000) == pytest.approx(1_000_000 / 3_600_000, rel=1e-6)
-    assert amd_rate_per_1m(1.0, 0) == 0.0  # guard against div-by-zero
+def test_savings_is_naive_over_routed_and_routing_never_costs_more():
+    r = compute_race(500_000, 200_000, 3_000, 4_000)
+    assert r.savings_x == pytest.approx(r.naive_usd / r.routed_usd, rel=1e-9)
+    assert r.naive_usd >= r.routed_usd
 
 
-def test_compute_race_savings_is_frontier_over_amd():
-    race = compute_race(extraction_tokens=1_000_000, synth_tokens=0,
-                        pod_hourly_usd=1.0, tokens_per_sec=1000)
-    assert race.frontier_usd == pytest.approx(FRONTIER_8B_PER_1M)  # 1M tokens at frontier rate
-    assert race.savings_x == pytest.approx(race.frontier_usd / race.amd_usd, rel=1e-6)
+def test_extraction_heavy_workload_widens_the_gap():
+    # The thesis: the more bulk extraction (routed to the cheap model), the bigger the win.
+    light = compute_race(100_000, 50_000, 3_000, 4_000)
+    heavy = compute_race(2_000_000, 1_000_000, 3_000, 4_000)
+    assert heavy.savings_x > light.savings_x
 
 
-def test_high_throughput_makes_amd_cheaper():
-    # The whole thesis: saturate the pod -> AMD wins.
-    slow = compute_race(1_000_000, 0, 2.0, 500)
-    fast = compute_race(1_000_000, 0, 2.0, 5000)
-    assert fast.amd_usd < slow.amd_usd
-    assert fast.savings_x > slow.savings_x
+def test_total_tokens_and_zero_safety():
+    assert compute_race(10, 20, 30, 40).total_tokens == 100
+    z = compute_race(0, 0, 0, 0)
+    assert z.routed_usd == 0.0 and z.savings_x == 0.0

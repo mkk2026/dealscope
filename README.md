@@ -4,11 +4,11 @@
 
 ### Paste a startup URL. Get a source-traceable deal screen in 30 seconds.
 
-*Autonomous public-data research with an AMD GPU as the cost engine.*
+*Autonomous public-data research with intelligent model routing on AMD-hosted GPUs.*
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![AMD ROCm](https://img.shields.io/badge/AMD-Instinct%20%2F%20ROCm-ED1C24?logo=amd&logoColor=white)](https://www.amd.com/en/developer/resources/cloud-access/amd-developer-cloud.html)
+[![AMD](https://img.shields.io/badge/AMD-Instinct%20via%20Fireworks-ED1C24?logo=amd&logoColor=white)](https://fireworks.ai/)
 [![Fireworks AI](https://img.shields.io/badge/Fireworks-AI-6D28D9)](https://fireworks.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen)]()
@@ -22,29 +22,46 @@ Built for the **AMD Developer Hackathon: ACT II** — Track 3 (Unicorn).
 ## The 30-second pitch
 
 Angel investors, VC scouts, and accelerator reviewers screen dozens of startups a
-month with nothing but Google and gut instinct. They don't get a data room until
-*after* the first meeting. They just need to answer one question fast: **is this
-worth a call?**
+month with nothing but Google and gut instinct. They just need to answer one question
+fast: **is this worth a call?**
 
 **DealScope** answers it. Paste a company's URL and autonomous agents read its public
 footprint — website, GitHub, hiring boards — and return a structured screen where
-**every claim links to the source it came from**, with a confidence score. Not "AI
-due diligence." An honest, verifiable pre-meeting screen.
+**every claim links to the source it came from**, with a confidence score.
 
-> The wedge isn't "no input." It's **traceability**: Perplexity hallucinates and
-> won't show its work; DealScope cites every line and lets you click to verify.
+> The wedge isn't "no input." It's **traceability**: Perplexity hallucinates and won't
+> show its work; DealScope cites every line and lets you click to verify. The one
+> model-opinion section (market) is labeled as such.
 
 ---
 
-## Why it's built on AMD
+## Why it's built on AMD — the cost engine
 
-This is the part that matters. Screening one company means reading 100+ pages — a lot
-of LLM calls. DealScope splits the work so the **AMD GPU is the cost engine**, not a logo:
+Screening one company means reading 100+ pages — a lot of LLM calls. The trick is **not
+using your most expensive model for the cheap work.** DealScope routes across two
+AMD-hosted models on Fireworks:
 
-| Stage | Runs on | Job |
-|-------|---------|-----|
-| **1 · Extract** | Self-hosted open model on an **AMD Instinct GPU pod** (ROCm + vLLM) | Bulk page → structured facts, each tagged with its source URL |
-| **2 · Synthesize** | Fireworks AI (AMD-hardware models) | Verdict, risk matrix, bull/bear over *only* traceable facts |
+| Stage | Model (on AMD Instinct via Fireworks) | Role |
+|-------|----------------------------------------|------|
+| **1 · Extract** | `gpt-oss-120b` — $0.15/$0.60 per 1M tok | Bulk page → structured facts (high volume) |
+| **2 · Synthesize** | `deepseek-v4-pro` — $1.74/$3.48 per 1M tok | Verdict, risk matrix, bull/bear (one call) |
+
+A naive pipeline uses the premium model for everything. DealScope reserves it for the
+single synthesis call and routes the high-volume extraction to the cheap model:
+
+```
+   Naive (premium for every page)   ──►   $0.0337
+   DealScope (routed)               ──►   $0.0095     ◄── 3.6× cheaper on real tokens
+```
+
+**The number is honest**: computed live from real input/output token counts ×
+published Fireworks rates — reproducible by any judge, no estimation. The more bulk
+extraction a company needs, the wider the gap. This is the hackathon's token-efficiency
+thesis shipped as a product.
+
+---
+
+## Architecture
 
 ```
         URL
@@ -55,96 +72,76 @@ of LLM calls. DealScope splits the work so the **AMD GPU is the cost engine**, n
    └───────────┘
          │  raw pages
          ▼
-   ┌──────────────────────────┐   measure tokens/sec here —
-   │  STAGE 1 · Extractor      │   self-hosted on AMD Instinct (ROCm/vLLM)
-   │  page → {fact + source}   │   bulk, batched, cheap   ◄── the cost engine
-   └──────────────────────────┘
+   ┌──────────────────────────┐   gpt-oss-120b (cheap) on AMD Instinct
+   │  STAGE 1 · Extractor      │   page → {fact + source}, streamed live
+   └──────────────────────────┘   ◄── the cost engine: high volume, low rate
          │  traceable facts
          ▼
-   ┌──────────────────────────┐
-   │  STAGE 2 · Synthesizer    │   Fireworks (AMD-hardware model)
-   │  verdict · risk · scores  │
+   ┌──────────────────────────┐   deepseek-v4-pro (premium), one call
+   │  STAGE 2 · Synthesizer    │   verdict · risk · scores
    └──────────────────────────┘
          │
          ▼
-   Live instrument panel: streaming stages · cost-race · GPU gauge · click-to-verify
+   Live instrument panel: streaming stages · cost-race · click-to-verify
 ```
 
-**The hero metric, proven from measured throughput** (`app/cost.py`): bulk extraction
-runs on the saturated AMD pod for cents while a hosted endpoint costs multiples more —
-a live cost-race ticks on screen next to a real `rocm-smi` GPU-utilization gauge. The
-number is a *consequence of measured tokens/sec*, not a slide.
+One FastAPI container serves the API and the single-page UI. Runs stream over
+Server-Sent Events; any run can be recorded and replayed (demo safety net).
 
 ---
 
 ## Watch it run
 
-The UI is a live **instrument panel**: stage cards light up, the cost-race ticks, the
-GPU gauge climbs, the memo streams in, and every fact is a clickable link to its source.
+The UI is one page: a screener up top, and a gallery of recorded screens of recognizable
+startups below — click any to replay it in the instrument panel.
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# Replay a recorded run (no keys needed) — the fastest way to see the whole flow:
+cp ../.env.example ../.env      # add your Fireworks key
 uvicorn app.main:app
-# then open:  http://localhost:8000/?replay=events-linear.app.jsonl
+# open http://localhost:8000  → paste a URL, or click an example screen
 ```
 
-A real recorded run ships in [`backend/demo/`](backend/demo/) — 29 real facts about
-Linear with a "Worth a call — 75/100" verdict.
+Recorded runs ship in [`backend/demo/`](backend/demo/) so the gallery works out of the box.
 
----
-
-## Quickstart (live)
-
-```bash
-cd backend
-cp ../.env.example ../.env       # then fill in your keys (see below)
-pip install -r requirements.txt
-uvicorn app.main:app
-# open http://localhost:8000 → paste a URL → Screen
-```
-
-Configure `.env` at the repo root (it is gitignored — never commit real keys):
+## Configure `.env` (repo root, gitignored)
 
 | Key | What it is |
 |-----|------------|
-| `FIREWORKS_API_KEY` / `FIREWORKS_MODEL` | Stage 2 synthesis. `GET /v1/models` lists what your account can access. |
-| `AMD_BASE_URL` / `AMD_MODEL` | Stage 1 on the pod — the vLLM OpenAI endpoint (`http://<pod-ip>:8000/v1`). |
-| `AMD_METRICS_URL` | The pod metrics server (`pod/metrics_server.py`) — makes the GPU gauge live. |
+| `FIREWORKS_API_KEY` | Your Fireworks key. `GET /v1/models` lists what your account can access. |
+| `EXTRACT_MODEL` | Cheap, high-volume model for extraction (default `gpt-oss-120b`). |
+| `SYNTH_MODEL` | Premium model for synthesis (default `deepseek-v4-pro`). |
 | `GITHUB_TOKEN` | Optional — lifts the GitHub API rate limit from 60 to 5000/hr. |
 
-Standing up the AMD pod (ROCm + vLLM + the metrics server) is a copy-paste walkthrough:
-**[docs/amd-pod-setup.md](docs/amd-pod-setup.md)**.
+> Never commit real keys. They're read from the environment at runtime only.
 
 ---
 
 ## What's under the hood
 
 - **Source-traceable by construction** — facts carry their origin URL through the whole
-  pipeline; the model never invents a source. The one model-opinion section (market) is
-  labeled as such.
+  pipeline; the model never invents a source.
 - **Honest failure** — a failed job-board fetch reads as *"unavailable,"* never a false
-  *"0 open roles."* Estimates are flagged, not asserted.
-- **JSON-mode everywhere** — Fireworks ships reasoning models, so output is forced to clean
-  JSON to keep chain-of-thought out of the memo.
-- **Streaming over SSE** — one container serves the API and the SPA; events stream as the
-  pipeline runs. Runs can be recorded and replayed (demo safety net).
+  *"0 open roles."*
+- **JSON-mode + reasoning control** — Fireworks ships reasoning models, so output is
+  forced to clean JSON; extraction runs gpt-oss in low-reasoning mode to stay fast/cheap.
+- **Streaming + replay** — events stream as the pipeline runs; recorded runs replay
+  identically.
 
 ## Tech stack
 
-`FastAPI` · `httpx` · `BeautifulSoup` · `OpenAI SDK` (any compatible endpoint) ·
-vanilla SPA + Server-Sent Events · `vLLM` on `ROCm` · `Docker` · `pytest`
+`FastAPI` · `httpx` · `BeautifulSoup` · `OpenAI SDK` · vanilla SPA + Server-Sent Events ·
+AMD-hosted models via `Fireworks` · `Docker` · `pytest`
 
 ## Testing
 
 ```bash
 cd backend
 pip install -r requirements-dev.txt
-pytest                          # 33 unit tests (parsers, cost math, memo, collectors)
-pytest -m integration           # golden-company harness (hits the network)
+pytest                # 33 unit tests (parsers, cost math, memo, collectors)
+pytest -m integration # golden-company harness (hits the network)
 ```
 
 ## Project layout
@@ -152,16 +149,14 @@ pytest -m integration           # golden-company harness (hits the network)
 ```
 backend/
   app/
-    main.py            # FastAPI: /screen, /screen/stream (SSE), static SPA
-    cost.py            # throughput-derived cost-race engine
-    llm/client.py      # one OpenAI-compatible client for pod + Fireworks
+    main.py            # FastAPI: /screen, /screen/stream (SSE), /api/screens, static SPA
+    cost.py            # routing cost-race (naive vs routed), real Fireworks rates
+    llm/client.py      # one OpenAI-compatible client; routes extract vs synth models
     pipeline/          # collect → extract → synthesize, + streaming + recorder
     static/            # the instrument-panel SPA (html/css/js)
   tests/               # unit + golden-company integration tests
-  demo/                # recorded runs for replay
-pod/metrics_server.py  # runs ON the AMD pod: rocm-smi + vLLM → cost-race feed
-docs/amd-pod-setup.md  # ROCm + vLLM walkthrough
-DESIGN-*.md            # product + demo design docs
+  demo/                # recorded screens for the gallery / replay
+  capture_gallery.py   # records the gallery screens
 ```
 
 ## Containerized

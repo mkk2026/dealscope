@@ -18,7 +18,7 @@ from pydantic import BaseModel, HttpUrl
 from app.pipeline.collect import collect
 from app.pipeline.extractor import extract_facts
 from app.pipeline.models import CATEGORIES
-from app.pipeline.stream import replay_events, screen_events
+from app.pipeline.stream import DEMO_DIR, replay_events, screen_events
 from app.pipeline.synthesizer import synthesize
 
 app = FastAPI(title="DealScope", version="0.1.0")
@@ -52,8 +52,8 @@ class VerdictOut(BaseModel):
 
 
 class CostSummary(BaseModel):
-    amd_tokens: int = 0          # Stage 1 extraction (the AMD pod)
-    fireworks_tokens: int = 0    # Stage 2 synthesis (Fireworks)
+    extract_tokens: int = 0      # Stage 1 extraction (cheap model)
+    synth_tokens: int = 0        # Stage 2 synthesis (premium model)
 
 
 class ScreenResponse(BaseModel):
@@ -77,6 +77,46 @@ async def health() -> dict:
 @app.get("/")
 async def index() -> FileResponse:
     return FileResponse(_STATIC / "index.html")
+
+
+@app.get("/gallery")
+async def gallery() -> FileResponse:
+    return FileResponse(_STATIC / "gallery.html")
+
+
+@app.get("/api/screens")
+async def api_screens() -> list[dict]:
+    """Summaries of every recorded screen in demo/ — powers the gallery cards."""
+    screens = []
+    for f in sorted(DEMO_DIR.glob("events-*.jsonl")):
+        if f.name == "events-test.jsonl":
+            continue
+        memo = cost = None
+        for line in f.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # tolerate a truncated final line from an interrupted capture
+            if ev.get("type") == "memo":
+                memo = ev
+            elif ev.get("type") == "cost" and ev.get("final"):
+                cost = ev
+        # Only surface real screens — a 0-fact run (JS-heavy site we couldn't read)
+        # produces a "Pass 0" fallback that looks broken; hide it.
+        if memo and memo.get("verdict") and memo.get("facts_extracted", 0) >= 3:
+            screens.append({
+                "name": f.name,
+                "host": f.name[len("events-"):-len(".jsonl")],
+                "recommendation": memo["verdict"]["recommendation"],
+                "score": memo["verdict"]["score"],
+                "confidence": memo.get("confidence"),
+                "facts": memo.get("facts_extracted"),
+                "savings_x": (cost or {}).get("savings_x"),
+            })
+    screens.sort(key=lambda s: s["score"], reverse=True)
+    return screens
 
 
 @app.get("/screen/stream")
@@ -122,6 +162,6 @@ async def screen(req: ScreenRequest) -> ScreenResponse:
                      for r in memo.risk_matrix],
         verdict=(VerdictOut(**vars(memo.verdict)) if memo.verdict else None),
         confidence=memo.confidence,
-        cost=CostSummary(amd_tokens=extraction.total_tokens,
-                         fireworks_tokens=synthesis.total_tokens),
+        cost=CostSummary(extract_tokens=extraction.total_tokens,
+                         synth_tokens=synthesis.total_tokens),
     )

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DealScope — Live Deal Screens</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .gwrap { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+    .ghead h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.5px; }
+    .ghead h1 .dot { color: var(--amd); }
+    .ghead p { color: var(--muted); margin: 0 0 8px; max-width: 640px; }
+    .ghead a { color: var(--accent, #ffb020); }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 28px; }
+    .card { display: block; text-decoration: none; color: var(--ink); background: var(--panel);
+            border: 1px solid var(--line); border-radius: 12px; padding: 18px; transition: border-color .15s, transform .15s; }
+    .card:hover { border-color: var(--amd); transform: translateY(-2px); }
+    .card .host { font-size: 17px; font-weight: 700; }
+    .card .rec { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700;
+                 padding: 3px 10px; border-radius: 20px; }
+    .rec-call { background: rgba(56,211,159,.15); color: var(--green); }
+    .rec-border { background: rgba(255,176,32,.15); color: #ffb020; }
+    .rec-pass { background: rgba(107,118,137,.2); color: var(--frontier); }
+    .card .meta { display: flex; gap: 16px; margin-top: 14px; color: var(--muted); font-size: 13px; }
+    .card .meta b { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .card .play { margin-top: 14px; color: var(--amd); font-weight: 700; font-size: 14px; }
+    .empty { color: var(--muted); margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="gwrap">
+    <div class="ghead">
+      <h1>DealScope<span class="dot">.</span> &nbsp;<span style="font-weight:400;color:var(--muted)">live deal screens</span></h1>
+      <p>Real, source-traceable screens of recognizable startups. Click any one to replay the
+         full screen — facts, verdict, and the cost-race — exactly as it ran. Every claim links
+         to its public source.</p>
+      <a href="/">→ Screen your own company</a>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="empty" id="empty" hidden>No screens recorded yet.</div>
+  </div>
+
+  <script>
+    function recClass(r) {
+      const s = (r || "").toLowerCase();
+      if (s.includes("call")) return "rec-call";
+      if (s.includes("pass")) return "rec-pass";
+      return "rec-border";
+    }
+    fetch("/api/screens").then(r => r.json()).then(list => {
+      const wrap = document.getElementById("cards");
+      if (!list.length) { document.getElementById("empty").hidden = false; return; }
+      wrap.innerHTML = list.map(s => `
+        <a class="card" href="/?replay=${encodeURIComponent(s.name)}">
+          <div class="host">${s.host}</div>
+          <span class="rec ${recClass(s.recommendation)}">${s.recommendation} — ${s.score}/100</span>
+          <div class="meta">
+            <span><b>${s.facts}</b> facts</span>
+            <span><b>${s.confidence}</b> confidence</span>
+            ${s.savings_x ? `<span><b>${s.savings_x}×</b> cheaper</span>` : ""}
+          </div>
+          <div class="play">▶ Replay screen</div>
+        </a>`).join("");
+    }).catch(() => { document.getElementById("empty").hidden = false; });
+  </script>
+</body>
+</html>

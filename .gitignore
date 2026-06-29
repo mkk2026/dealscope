@@ -30,3 +30,8 @@ build/
 .coverage
 htmlcov/
 backend/demo/events-test.jsonl
+
+# Internal strategy / design docs — never publish to the public repo
+council-report-*.html
+council-transcript-*.md
+DESIGN-*.md
