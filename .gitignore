@@ -26,12 +26,17 @@ out/
 dist/
 build/
 
+# HF Space deploy files (live in the separate Space repo, not this one)
+space/
+
 # Test artifacts
 .coverage
 htmlcov/
 backend/demo/events-test.jsonl
 
-# Internal strategy / design docs — never publish to the public repo
+# Internal strategy / design / submission-prep docs — never publish to the public repo
 council-report-*.html
 council-transcript-*.md
-DESIGN-*.md
+DESIGN-*
+SUBMISSION-*
+.gstack/
