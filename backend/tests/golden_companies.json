@@ -1,0 +1,23 @@
+[
+  {
+    "url": "https://linear.app",
+    "domain": "linear.app",
+    "expect_github_org": "linear",
+    "expect_min_sources": 3,
+    "notes": "Server-rendered; GitHub org 'linear' present; Ashby board."
+  },
+  {
+    "url": "https://posthog.com",
+    "domain": "posthog.com",
+    "expect_github_org": "PostHog",
+    "expect_min_sources": 3,
+    "notes": "Open-source; strong GitHub presence."
+  },
+  {
+    "url": "https://www.cal.com",
+    "domain": "cal.com",
+    "expect_github_org": "calcom",
+    "expect_min_sources": 3,
+    "notes": "Open-source scheduling; GitHub org 'calcom'."
+  }
+]

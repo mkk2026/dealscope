@@ -1,0 +1,50 @@
+{"type": "stage", "stage": "collect", "status": "start", "_t": 0.0}
+{"type": "stage", "stage": "collect", "status": "done", "sources": 6, "_t": 8.366}
+{"type": "stage", "stage": "extract", "status": "start", "_t": 8.366}
+{"type": "metric", "cum_tokens": 486, "tokens_per_sec": 1500.0, "gpu_util": null, "_t": 18.596}
+{"type": "cost", "amd_usd": 0.0002, "frontier_usd": 0.0001, "savings_x": 0.5, "_t": 18.596}
+{"type": "fact", "category": "overview", "claim": "Linear offers a Free plan at $0 per month with unlimited members, 2 teams, and 250 issues.", "source_url": "https://linear.app/pricing", "confidence": 1.0, "_t": 39.192}
+{"type": "fact", "category": "overview", "claim": "Linear's Basic plan costs $10 per user per month billed yearly and includes 5 teams, unlimited issues, and unlimited file uploads.", "source_url": "https://linear.app/pricing", "confidence": 1.0, "_t": 39.192}
+{"type": "fact", "category": "overview", "claim": "Linear's Business plan costs $16 per user per month billed yearly and includes unlimited teams, private teams, and Triage Intelligence.", "source_url": "https://linear.app/pricing", "confidence": 1.0, "_t": 39.192}
+{"type": "fact", "category": "overview", "claim": "Linear's Enterprise plan has custom pricing with annual billing only and includes SAML, SCIM, and priority support.", "source_url": "https://linear.app/pricing", "confidence": 1.0, "_t": 39.192}
+{"type": "fact", "category": "traction", "claim": "Linear is trusted by more than 33,000 companies.", "source_url": "https://linear.app/pricing", "confidence": 1.0, "_t": 39.192}
+{"type": "metric", "cum_tokens": 2164, "tokens_per_sec": 1500.0, "gpu_util": null, "_t": 39.192}
+{"type": "cost", "amd_usd": 0.0008, "frontier_usd": 0.0004, "savings_x": 0.5, "_t": 39.192}
+{"type": "fact", "category": "traction", "claim": "OpenAI scaled to 3,000 users on Linear", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "engineering", "claim": "60% of Ramp's merged PRs are authored by a coding agent", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "traction", "claim": "Brex saw a 2.0x increase in filed issues after using Linear", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "engineering", "claim": "Brex experienced 3.3x faster issue resolution with Linear", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "engineering", "claim": "28% of issues at Brex are authored by agents", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "engineering", "claim": "Scale compressed bug resolution time by 52% using Linear", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "traction", "claim": "Linear powers more than 33,000 organizations", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.153}
+{"type": "fact", "category": "market", "claim": "Linear serves Fortune 20 companies", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.154}
+{"type": "fact", "category": "traction", "claim": "Remote switched a 1,000 person team to Linear", "source_url": "https://linear.app/customers", "confidence": 1.0, "_t": 42.154}
+{"type": "metric", "cum_tokens": 4624, "tokens_per_sec": 1500.0, "gpu_util": null, "_t": 42.154}
+{"type": "cost", "amd_usd": 0.0017, "frontier_usd": 0.0009, "savings_x": 0.5, "_t": 42.154}
+{"type": "fact", "category": "overview", "claim": "The GitHub organization 'linear' has top repositories totaling 1785 stars.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.567}
+{"type": "fact", "category": "engineering", "claim": "The primary language used across the top repositories is TypeScript.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.567}
+{"type": "fact", "category": "overview", "claim": "The repository linear/linear has 1464 stars, 273 forks, and 22 open issues.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.567}
+{"type": "fact", "category": "overview", "claim": "The repository linear/linear is described as 'Tools, SDK's and plugins for Linear'.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.568}
+{"type": "fact", "category": "engineering", "claim": "The repository linear/claude-managed-agents-demo is an example for connecting Linear Agents SDK with Claude Managed Agents.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.568}
+{"type": "fact", "category": "engineering", "claim": "The repository linear/linear-import provides Linear importers.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.568}
+{"type": "fact", "category": "engineering", "claim": "The repository linear/weather-bot is a demo agent that can figure out coordinates for a city and tell the current weather or local time.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.568}
+{"type": "fact", "category": "engineering", "claim": "The repository linear/linear-zapier is Linear's Zapier integration.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.568}
+{"type": "fact", "category": "engineering", "claim": "The repository linear/linear-release is a CLI to automatically track releases in Linear.", "source_url": "https://github.com/linear", "confidence": 1.0, "_t": 42.568}
+{"type": "metric", "cum_tokens": 7019, "tokens_per_sec": 1500.0, "gpu_util": null, "_t": 42.568}
+{"type": "cost", "amd_usd": 0.0026, "frontier_usd": 0.0014, "savings_x": 0.5, "_t": 42.568}
+{"type": "metric", "cum_tokens": 11101, "tokens_per_sec": 1500.0, "gpu_util": null, "_t": 49.236}
+{"type": "cost", "amd_usd": 0.0041, "frontier_usd": 0.0022, "savings_x": 0.5, "_t": 49.236}
+{"type": "fact", "category": "hiring", "claim": "Linear has 23 open roles listed on Ashby.", "source_url": "https://jobs.ashbyhq.com/Linear", "confidence": 1.0, "_t": 57.566}
+{"type": "fact", "category": "hiring", "claim": "Linear is hiring in multiple regions including North America, Europe, and London.", "source_url": "https://jobs.ashbyhq.com/Linear", "confidence": 1.0, "_t": 57.566}
+{"type": "fact", "category": "hiring", "claim": "Linear is hiring a Senior / Staff Product Engineer, AI in North America.", "source_url": "https://jobs.ashbyhq.com/Linear", "confidence": 1.0, "_t": 57.566}
+{"type": "fact", "category": "hiring", "claim": "Linear is hiring a Manager, Growth Sales in North America.", "source_url": "https://jobs.ashbyhq.com/Linear", "confidence": 1.0, "_t": 57.566}
+{"type": "fact", "category": "hiring", "claim": "Linear is hiring an Account Executive, Growth (EMEA) in London.", "source_url": "https://jobs.ashbyhq.com/Linear", "confidence": 1.0, "_t": 57.567}
+{"type": "fact", "category": "hiring", "claim": "Linear is hiring a Principal Product Designer in Europe.", "source_url": "https://jobs.ashbyhq.com/Linear", "confidence": 1.0, "_t": 57.567}
+{"type": "metric", "cum_tokens": 12852, "tokens_per_sec": 1500.0, "gpu_util": null, "_t": 57.567}
+{"type": "cost", "amd_usd": 0.0048, "frontier_usd": 0.0026, "savings_x": 0.5, "_t": 57.567}
+{"type": "stage", "stage": "extract", "status": "done", "facts": 29, "tokens": 12852, "_t": 57.717}
+{"type": "stage", "stage": "synthesize", "status": "start", "_t": 57.717}
+{"type": "cost", "final": true, "amd_usd": 0.0048, "frontier_usd": 0.0026, "savings_x": 0.5, "_t": 87.349}
+{"type": "stage", "stage": "synthesize", "status": "done", "_t": 87.349}
+{"type": "memo", "verdict": {"recommendation": "Worth a call", "score": 75, "bull": "Strong product-market fit with 33k+ organizations, validated AI-driven efficiency gains, and enterprise traction with Fortune 20 companies.", "bear": "Crowded market, modest GitHub community, and heavy reliance on AI trend; limited financial data to assess long-term sustainability."}, "risk_matrix": [{"category": "Market Competition", "score": 7, "reason": "Project management space is crowded; Linear's GitHub stars (1.4k) are modest relative to category leaders, suggesting potential visibility challenges."}, {"category": "AI Dependency", "score": 6, "reason": "Case studies emphasize AI agent benefits (e.g., 60% of Ramp's PRs by agents); if AI hype fades or agents underperform, differentiation weakens."}, {"category": "Scaling Execution", "score": 5, "reason": "Hiring 23 roles across multiple regions indicates rapid scaling, which carries execution risk in maintaining product quality and culture."}, {"category": "Market Data Thinness", "score": 4, "reason": "Only one market fact (Fortune 20) is provided; limited insight into TAM, growth rate, or competitive positioning reduces confidence in market assessment."}], "section_summaries": {"overview": "Linear offers tiered pricing from free to enterprise and maintains a public GitHub presence with 1,464 stars for its tools and SDKs repository.", "engineering": "Customer case studies highlight significant efficiency gains via AI agents and integrations, with a TypeScript-based codebase and multiple open-source agent demos.", "hiring": "Linear is actively hiring 23 roles across North America, Europe, and London, including AI-focused positions, signaling growth and product expansion.", "market": "Linear serves Fortune 20 companies, indicating enterprise viability, though broader market data is limited.", "traction": "Linear is used by over 33,000 organizations, including OpenAI and Brex, with reported scaling and efficiency improvements."}, "confidence": 70, "sources_collected": 6, "facts_extracted": 29, "_t": 87.35}
+{"type": "done", "_t": 87.35}

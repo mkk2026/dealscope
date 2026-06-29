@@ -1,0 +1,32 @@
+# Secrets — never commit
+.env
+.env.local
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Node / Next.js (frontend, added later)
+node_modules/
+.next/
+out/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+
+# Test artifacts
+.coverage
+htmlcov/
+backend/demo/events-test.jsonl

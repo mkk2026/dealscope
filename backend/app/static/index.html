@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DealScope</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">DealScope<span class="dot">.</span></div>
+    <form id="screen-form" autocomplete="off">
+      <input id="url" type="text" placeholder="paste a startup URL…  e.g. https://linear.app" />
+      <button id="go" type="submit">Screen</button>
+    </form>
+    <div class="tag">30-second source-traceable deal screen</div>
+  </header>
+
+  <main>
+    <!-- Left: pipeline (the "it's alive" act) -->
+    <section id="pipeline">
+      <h2>Pipeline</h2>
+      <div class="stage" data-stage="collect"><span class="led"></span> Collect <em id="c-collect"></em></div>
+      <div class="stage" data-stage="extract"><span class="led"></span> Extract <small>(AMD pod)</small> <em id="c-extract"></em></div>
+      <div class="stage" data-stage="synthesize"><span class="led"></span> Synthesize <small>(Fireworks)</small></div>
+    </section>
+
+    <!-- Center: THE HERO — cost race + GPU working -->
+    <section id="hero">
+      <div class="hero-title">COST&nbsp;RACE</div>
+      <div class="race">
+        <div class="meter frontier">
+          <div class="label">Hosted endpoint</div>
+          <div class="val" id="frontier-usd">$0.0000</div>
+        </div>
+        <div class="savings"><span id="savings">—</span><small>cheaper</small></div>
+        <div class="meter amd">
+          <div class="label">DealScope on AMD</div>
+          <div class="val" id="amd-usd">$0.0000</div>
+        </div>
+      </div>
+      <div class="gpu">
+        <canvas id="gauge" width="120" height="120"></canvas>
+        <div class="gpu-readout">
+          <div><span id="gpu-util">—</span><small>GPU util</small></div>
+          <div><span id="tps">—</span><small>tokens/sec</small></div>
+        </div>
+        <canvas id="spark" width="280" height="70"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <!-- The payoff: verdict + traceable memo -->
+  <section id="memo" hidden>
+    <div id="verdict"></div>
+    <div id="sections"></div>
+    <div id="risk"></div>
+  </section>
+
+  <div id="status"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
