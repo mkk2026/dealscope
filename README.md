@@ -12,8 +12,13 @@
 [![Fireworks AI](https://img.shields.io/badge/Fireworks-AI-6D28D9)](https://fireworks.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen)]()
+[![Live Demo](https://img.shields.io/badge/▶_Live_Demo-corebrim24--dealscope.hf.space-ff4d4d)](https://corebrim24-dealscope.hf.space)
 
 Built for the **AMD Developer Hackathon: ACT II** — Track 3 (Unicorn).
+
+### ▶ Live demo: **[corebrim24-dealscope.hf.space](https://corebrim24-dealscope.hf.space)**
+
+Open it, click any example screen to replay it instantly, or paste a URL to run one live.
 
 </div>
 
