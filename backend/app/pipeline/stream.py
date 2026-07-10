@@ -72,7 +72,8 @@ async def _run(url: str):
            "section_summaries": m.section_summaries,
            "confidence": m.confidence,
            "sources_collected": len(docs),
-           "facts_extracted": len(m.facts)}
+           "facts_extracted": len(m.facts),
+           "synth_fallback_model": synth.fallback_model}
     yield {"type": "done"}
 
 

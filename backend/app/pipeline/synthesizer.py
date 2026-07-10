@@ -13,10 +13,17 @@ import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
 
+import openai
+
 from app.config import settings
-from app.llm.client import LLMClient, synthesis_client
+from app.llm.client import Completion, LLMClient, extractor_client, synthesis_client
 from app.pipeline.jsonparse import extract_json_object
 from app.pipeline.models import CATEGORIES, Fact, Memo, Risk, Verdict
+
+# One polite pause before retrying the premium model on a 429; if it is still
+# throttled after that, the cheap extraction model finishes the screen instead
+# of the whole run dying at the final stage.
+_RATE_LIMIT_RETRY_DELAY_S = 5.0
 
 _SYSTEM = (
     "You are a startup deal-screen analyst. You are given atomic, sourced facts about "
@@ -38,6 +45,7 @@ class SynthesisResult:
     memo: Memo
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    fallback_model: str | None = None   # set when the premium model was rate-limited
 
     @property
     def total_tokens(self) -> int:
@@ -101,6 +109,25 @@ def _clamp_int(value, lo: int, hi: int, default: int) -> int:
         return default
 
 
+async def _complete_synthesis(client: LLMClient, user: str) -> Completion:
+    return await client.complete(system=_SYSTEM, user=user, temperature=0.3,
+                                 max_tokens=3000, json_mode=True)
+
+
+async def _complete_with_fallback(client: LLMClient, user: str) -> tuple[Completion, str | None]:
+    """Premium model first; on a 429, wait once and retry. If it is still throttled,
+    finish the screen on the cheap extraction model — a verdict from the cheap model
+    beats a dead run. If the fallback is throttled too, let the error propagate."""
+    for attempt in (1, 2):
+        try:
+            return await _complete_synthesis(client, user), None
+        except openai.RateLimitError:
+            if attempt == 1:
+                await asyncio.sleep(_RATE_LIMIT_RETRY_DELAY_S)
+    fallback = extractor_client()
+    return await _complete_synthesis(fallback, user), fallback.model
+
+
 async def synthesize(url: str, facts: list[Fact], client: LLMClient | None = None) -> SynthesisResult:
     if not facts:
         # Nothing to synthesize — be honest rather than hallucinate a verdict.
@@ -114,17 +141,13 @@ async def synthesize(url: str, facts: list[Fact], client: LLMClient | None = Non
     # Cap facts sent to the prompt (highest-confidence first) so a fact-rich company
     # can't overflow the model into an empty verdict. ALL facts still go into the memo.
     top_facts = sorted(facts, key=lambda f: f.confidence, reverse=True)[:settings.synth_max_facts]
-    completion = await client.complete(
-        system=_SYSTEM,
-        user=f"Company URL: {url}\n\nExtracted facts:\n{_facts_payload(top_facts)}",
-        temperature=0.3,
-        max_tokens=3000,
-        json_mode=True,
-    )
+    user = f"Company URL: {url}\n\nExtracted facts:\n{_facts_payload(top_facts)}"
+    completion, fallback_model = await _complete_with_fallback(client, user)
     memo = _build_memo(url, facts, extract_json_object(completion.text))
     return SynthesisResult(memo=memo,
                            prompt_tokens=completion.prompt_tokens,
-                           completion_tokens=completion.completion_tokens)
+                           completion_tokens=completion.completion_tokens,
+                           fallback_model=fallback_model)
 
 
 if __name__ == "__main__":
