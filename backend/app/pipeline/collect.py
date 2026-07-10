@@ -18,7 +18,17 @@ from app.pipeline.jobs import detect_boards, fetch_jobs
 from app.pipeline.models import SourceDocument
 
 
+def normalize_url(url: str) -> str:
+    """People paste bare domains ('stripe.com'); without a scheme the crawler
+    collects nothing and the screen degrades to a bogus 'Pass — 0/100'."""
+    url = url.strip()
+    if url and not url.lower().startswith(("http://", "https://")):
+        url = "https://" + url
+    return url
+
+
 async def collect(url: str) -> list[SourceDocument]:
+    url = normalize_url(url)
     pages, page_html = await crawl_site(url)
     # Discover from the combined raw HTML of every page (github/careers links live
     # in hrefs and often only on subpages, not the homepage).
