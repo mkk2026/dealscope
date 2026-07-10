@@ -107,3 +107,14 @@ main { display: grid; grid-template-columns: 240px 1fr; gap: 20px; padding: 24px
 .rec-pass { background: rgba(107,118,137,.2); color: var(--frontier); }
 .card .meta { display: flex; gap: 14px; margin-top: 12px; color: var(--muted); font-size: 13px; }
 .card .meta b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Mobile: collapse the two-column shell and the three-across cost race so the
+   layout fits a phone instead of overflowing horizontally. */
+@media (max-width: 720px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+  .race { grid-template-columns: 1fr; gap: 14px; }
+  .savings { flex-direction: row; justify-content: center; align-items: baseline; gap: 8px; }
+  #hero { padding: 22px 16px; }
+  .meter .val { font-size: 34px; }
+  #memo, #status, #examples { padding-left: 16px; padding-right: 16px; }
+}
