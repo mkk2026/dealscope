@@ -8,7 +8,8 @@ const factsByCat = {};        // category -> [fact]
 
 document.getElementById("screen-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const url = $("url").value.trim();
+  let url = $("url").value.trim();
+  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;  // bare domains work too
   if (url) start("/screen/stream?url=" + encodeURIComponent(url));
 });
 
@@ -23,7 +24,10 @@ function start(streamUrl) {
   $("status").textContent = "screening…";
   es = new EventSource(streamUrl);
   es.onmessage = (m) => handle(JSON.parse(m.data));
-  es.onerror = () => { $("status").textContent = "stream closed"; $("go").disabled = false; if (es) es.close(); };
+  es.onerror = () => {
+    if ($("memo").hidden) showError("Connection to the server dropped mid-screen — try again.");
+    $("status").textContent = "stream closed"; $("go").disabled = false; if (es) es.close();
+  };
 }
 
 function resetUI() {
@@ -32,7 +36,18 @@ function resetUI() {
   $("c-collect").textContent = ""; $("c-extract").textContent = "";
   setText("naive-usd", "$0.0000"); setText("routed-usd", "$0.0000");
   setText("savings", "—"); setText("tok", "0");
-  $("memo").hidden = true; $("verdict").innerHTML = ""; $("sections").innerHTML = ""; $("risk").innerHTML = "";
+  $("memo").hidden = true; $("verdict").innerHTML = ""; $("verdict").classList.remove("error");
+  $("sections").innerHTML = ""; $("risk").innerHTML = "";
+}
+
+function showError(message) {
+  const friendly = /RateLimit|429/i.test(message)
+    ? "The model provider is rate-limiting us right now — wait a minute and try again."
+    : "The screen could not finish — try again.";
+  $("memo").hidden = false;
+  $("verdict").classList.add("error");
+  $("verdict").innerHTML = `<div class="error-banner"><b>Screen failed.</b> ${esc(friendly)}`
+    + `<div class="error-detail">${esc(message)}</div></div>`;
 }
 
 function handle(ev) {
@@ -42,7 +57,9 @@ function handle(ev) {
     case "cost": return onCost(ev);
     case "memo": return onMemo(ev);
     case "done": $("status").textContent = "done"; $("go").disabled = false; if (es) es.close(); return;
-    case "error": $("status").textContent = "error: " + ev.message; $("go").disabled = false; if (es) es.close(); return;
+    case "error":
+      showError(ev.message);
+      $("status").textContent = "error: " + ev.message; $("go").disabled = false; if (es) es.close(); return;
   }
 }
 
@@ -71,11 +88,14 @@ function onCost(ev) {
 function onMemo(ev) {
   $("memo").hidden = false;
   if (ev.verdict) {
+    const fb = ev.synth_fallback_model
+      ? `<div class="fallback-note">premium model was rate-limited — synthesized on ${esc(String(ev.synth_fallback_model).split("/").pop())}</div>`
+      : "";
     $("verdict").innerHTML =
       `<div class="rec">${esc(ev.verdict.recommendation)} — ${ev.verdict.score}/100`
       + ` <small style="color:var(--muted)">confidence ${ev.confidence}</small></div>`
       + `<div class="bb"><b>Bull:</b> ${esc(ev.verdict.bull)}</div>`
-      + `<div class="bb"><b>Bear:</b> ${esc(ev.verdict.bear)}</div>`;
+      + `<div class="bb"><b>Bear:</b> ${esc(ev.verdict.bear)}</div>` + fb;
   }
   const summaries = ev.section_summaries || {};
   const out = [];

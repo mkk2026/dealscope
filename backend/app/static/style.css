@@ -74,6 +74,10 @@ main { display: grid; grid-template-columns: 240px 1fr; gap: 20px; padding: 24px
 #memo { padding: 0 24px 40px; max-width: 1100px; }
 #verdict { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--green);
   border-radius: 12px; padding: 20px 24px; margin-bottom: 18px; }
+#verdict.error { border-left-color: var(--amd); }
+.error-banner b { color: var(--amd); }
+.error-banner .error-detail { color: var(--muted); font-size: 12px; margin-top: 8px; word-break: break-word; }
+.fallback-note { color: var(--accent); font-size: 13px; margin-top: 10px; }
 #verdict .rec { font-size: 26px; font-weight: 800; }
 #verdict .bb { color: var(--muted); margin-top: 8px; }
 #verdict .bb b { color: var(--ink); }
