@@ -18,22 +18,37 @@ import openai
 from app.config import settings
 from app.llm.client import Completion, LLMClient, extractor_client, synthesis_client
 from app.pipeline.jsonparse import extract_json_object
-from app.pipeline.models import CATEGORIES, Fact, Memo, Risk, Verdict
+from app.pipeline.models import CATEGORIES, SCORECARD_SIGNALS, Fact, Memo, Risk, Signal, Verdict
 
 # One polite pause before retrying the premium model on a 429; if it is still
 # throttled after that, the cheap extraction model finishes the screen instead
 # of the whole run dying at the final stage.
 _RATE_LIMIT_RETRY_DELAY_S = 5.0
 
+# Evidence per signal is capped so the scorecard can't blow up the JSON output
+# (truncated JSON = unparseable memo, the worst failure mode on a live screen).
+_MAX_EVIDENCE = 3
+
+_SIGNAL_IDS = ", ".join(SCORECARD_SIGNALS)
+
 _SYSTEM = (
     "You are a startup deal-screen analyst. You are given atomic, sourced facts about "
-    "a company, grouped by category. Produce a concise pre-meeting screen. "
+    "a company, grouped by category; each fact ends with its [source: URL]. "
+    "Produce a concise pre-meeting screen. "
     "Return ONLY a JSON object with this shape: "
     '{"section_summaries": {<category>: one-sentence summary}, '
     '"risk_matrix": [{"category": str, "score": int 1-10, "reason": str}], '
     '"verdict": {"recommendation": "Worth a call"|"Borderline"|"Pass", '
     '"score": int 0-100, "bull": str, "bear": str}, '
-    '"confidence": int 0-100}. '
+    '"confidence": int 0-100, '
+    '"scorecard": [{"id": str, "score": int 0-10, "rationale": one sentence, '
+    '"evidence": [up to 3 source URLs copied from the facts you used], '
+    '"status": "scored"|"insufficient_data"}]}. '
+    f"The scorecard is how an investor screens; produce one entry per id from: {_SIGNAL_IDS}. "
+    "Score each signal 0-10 strictly from the provided facts and cite the exact source "
+    "URLs of the facts you used in evidence. If the facts do not support a signal, use "
+    'status "insufficient_data" with score 0 — never guess. For red_flags, higher score '
+    "= more red flags found. "
     "Ground every statement in the provided facts. Do NOT invent facts. "
     "The 'market' summary is your opinion — hedge it. Higher risk score = riskier. "
     "If facts are thin, say so and lower confidence."
@@ -60,8 +75,48 @@ def _facts_payload(facts: list[Fact]) -> str:
     for cat in CATEGORIES:
         if grouped[cat]:
             lines.append(f"## {cat}")
-            lines.extend(f"- ({f.confidence:.2f}) {f.claim}" for f in grouped[cat])
+            # The [source: URL] suffix is what lets the model cite real evidence in the
+            # scorecard — evidence URLs are validated against these exact strings.
+            lines.extend(f"- ({f.confidence:.2f}) {f.claim} [source: {f.source_url}]"
+                         for f in grouped[cat])
     return "\n".join(lines) if lines else "(no facts extracted)"
+
+
+def _build_scorecard(obj: dict, valid_urls: set[str]) -> list[Signal]:
+    """Validate the model's scorecard. Unknown ids are dropped, scores clamped, and
+    evidence is checked against the source URLs of collected facts — a signal whose
+    evidence doesn't trace back to a collected source is downgraded to
+    insufficient_data, so hallucinated evidence is structurally impossible.
+    A missing/malformed scorecard returns [] (the UI simply omits the section —
+    this is also what keeps pre-scorecard replay recordings rendering cleanly)."""
+    raw = obj.get("scorecard")
+    if not isinstance(raw, list) or not raw:
+        return []
+
+    by_id: dict[str, Signal] = {}
+    for s in raw:
+        if not isinstance(s, dict):
+            continue
+        sid = str(s.get("id", "")).lower().strip()
+        if sid not in SCORECARD_SIGNALS:
+            continue
+        evidence = [u for u in (s.get("evidence") or [])
+                    if isinstance(u, str) and u in valid_urls][:_MAX_EVIDENCE]
+        scored = bool(evidence) and s.get("status") != "insufficient_data"
+        by_id[sid] = Signal(
+            id=sid,
+            name=SCORECARD_SIGNALS[sid],
+            score=_clamp_int(s.get("score"), 0, 10, 0) if scored else 0,
+            rationale=str(s.get("rationale", "")),
+            evidence=evidence,
+            status="scored" if scored else "insufficient_data",
+        )
+
+    # Every rubric signal appears exactly once, in rubric order; the ones the model
+    # skipped are honest gaps, not silent omissions.
+    return [by_id.get(sid) or Signal(id=sid, name=name, score=0, rationale="",
+                                     status="insufficient_data")
+            for sid, name in SCORECARD_SIGNALS.items()]
 
 
 def _build_memo(url: str, facts: list[Fact], obj: dict | None) -> Memo:
@@ -99,6 +154,7 @@ def _build_memo(url: str, facts: list[Fact], obj: dict | None) -> Memo:
         risk_matrix=risks,
         verdict=verdict,
         confidence=_clamp_int(obj.get("confidence"), 0, 100, 0),
+        scorecard=_build_scorecard(obj, {f.source_url for f in facts}),
     )
 
 
@@ -110,8 +166,10 @@ def _clamp_int(value, lo: int, hi: int, default: int) -> int:
 
 
 async def _complete_synthesis(client: LLMClient, user: str) -> Completion:
+    # 4000, not 3000: the scorecard grew the JSON output; a truncated response is
+    # unparseable and degrades the whole memo to the "synthesis unavailable" path.
     return await client.complete(system=_SYSTEM, user=user, temperature=0.3,
-                                 max_tokens=3000, json_mode=True)
+                                 max_tokens=4000, json_mode=True)
 
 
 async def _complete_with_fallback(client: LLMClient, user: str) -> tuple[Completion, str | None]:

@@ -37,7 +37,7 @@ function resetUI() {
   setText("naive-usd", "$0.0000"); setText("routed-usd", "$0.0000");
   setText("savings", "—"); setText("tok", "0");
   $("memo").hidden = true; $("verdict").innerHTML = ""; $("verdict").classList.remove("error");
-  $("sections").innerHTML = ""; $("risk").innerHTML = "";
+  $("scorecard").innerHTML = ""; $("sections").innerHTML = ""; $("risk").innerHTML = "";
 }
 
 function showError(message) {
@@ -97,6 +97,7 @@ function onMemo(ev) {
       + `<div class="bb"><b>Bull:</b> ${esc(ev.verdict.bull)}</div>`
       + `<div class="bb"><b>Bear:</b> ${esc(ev.verdict.bear)}</div>` + fb;
   }
+  renderScorecard(ev.scorecard);  // absent/empty (old replays) ⇒ section stays hidden
   const summaries = ev.section_summaries || {};
   const out = [];
   for (const cat of CATS) {
@@ -111,6 +112,25 @@ function onMemo(ev) {
   $("sections").innerHTML = out.join("");
   $("risk").innerHTML = (ev.risk_matrix || [])
     .map((r) => `<div class="riskchip">${esc(r.category)} <b>${r.score}/10</b></div>`).join("");
+}
+
+function renderScorecard(list) {
+  if (!Array.isArray(list) || !list.length) { $("scorecard").innerHTML = ""; return; }
+  const rows = list.map((s) => {
+    const links = (s.evidence || []).map((u) =>
+      `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">↗</a>`).join(" ");
+    const meat = s.status === "scored"
+      ? `<div class="sbar"><div class="sfill${s.id === "red_flags" ? " sred" : ""}"`
+        + ` style="width:${Math.max(0, Math.min(10, s.score)) * 10}%"></div></div>`
+        + `<b class="sscore">${s.score}/10</b>`
+      : `<span class="sinsuff">insufficient public data</span>`;
+    const rat = s.rationale ? `<span class="srat">${esc(s.rationale)} ${links}</span>`
+                            : (links ? `<span class="srat">${links}</span>` : "");
+    return `<div class="signal"><span class="sname">${esc(s.name)}</span>${meat}${rat}</div>`;
+  }).join("");
+  $("scorecard").innerHTML =
+    `<h3>Investor scorecard <small>every score cites its sources — or admits it can't</small></h3>`
+    + `<div class="signals">${rows}</div>`;
 }
 
 /* ---------- helpers ---------- */

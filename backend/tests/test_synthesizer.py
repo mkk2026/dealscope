@@ -3,8 +3,8 @@ import openai
 
 from app.llm.client import Completion
 from app.pipeline import synthesizer
-from app.pipeline.models import Fact
-from app.pipeline.synthesizer import _build_memo, _clamp_int, synthesize
+from app.pipeline.models import SCORECARD_SIGNALS, Fact
+from app.pipeline.synthesizer import _build_memo, _build_scorecard, _clamp_int, synthesize
 
 
 def _facts():
@@ -66,6 +66,63 @@ def test_build_memo_null_obj_is_graceful():
     assert m.confidence == 0
     assert "unavailable" in m.section_summaries["overview"].lower()
     assert len(m.facts) == 2
+
+
+# Investor Scorecard — validation is the trust boundary: the model proposes,
+# _build_scorecard disposes. Evidence must trace to collected fact URLs.
+
+_VALID_URLS = {"https://x/pricing", "https://github.com/x"}
+
+
+def test_build_scorecard_validates_clamps_and_fills_all_signals():
+    obj = {"scorecard": [
+        {"id": "technical_team", "score": 99, "rationale": "strong",
+         "evidence": ["https://github.com/x"]},                          # 99 → clamped 10
+        {"id": "BOGUS_SIGNAL", "score": 5, "evidence": ["https://x/pricing"]},  # dropped
+        {"id": "hiring_velocity", "score": 7, "rationale": "hiring",
+         "evidence": ["https://fake.invented/url"]},                     # unverifiable → coerced
+        {"id": "red_flags", "score": 3, "rationale": "stale blog",
+         "evidence": ["https://x/pricing", "https://github.com/x",
+                      "https://x/pricing", "https://github.com/x"]},     # capped at 3
+        "not-a-dict",                                                    # tolerated
+    ]}
+    sc = _build_scorecard(obj, _VALID_URLS)
+    assert [s.id for s in sc] == list(SCORECARD_SIGNALS)   # all 10, rubric order
+    by = {s.id: s for s in sc}
+    assert by["technical_team"].score == 10 and by["technical_team"].status == "scored"
+    assert by["hiring_velocity"].status == "insufficient_data"   # fake evidence rejected
+    assert by["hiring_velocity"].score == 0
+    assert len(by["red_flags"].evidence) == 3
+    assert by["market_timing"].status == "insufficient_data"     # model skipped it
+
+
+def test_build_scorecard_absent_or_malformed_returns_empty():
+    assert _build_scorecard({}, _VALID_URLS) == []
+    assert _build_scorecard({"scorecard": {}}, _VALID_URLS) == []
+    assert _build_scorecard({"scorecard": []}, _VALID_URLS) == []
+
+
+def test_build_memo_wires_scorecard_with_fact_urls():
+    obj = {"verdict": {"recommendation": "Borderline", "score": 50, "bull": "b", "bear": "r"},
+           "confidence": 40,
+           "scorecard": [{"id": "customer_evidence", "score": 6, "rationale": "logos",
+                          "evidence": ["https://x/pricing"]}]}
+    m = _build_memo("https://x", _facts(), obj)
+    assert len(m.scorecard) == 10
+    by = {s.id: s for s in m.scorecard}
+    assert by["customer_evidence"].status == "scored"
+    assert by["customer_evidence"].evidence == ["https://x/pricing"]
+
+
+def test_build_memo_without_scorecard_key_keeps_memo_working():
+    m = _build_memo("https://x", _facts(), {"verdict": {"score": 50}, "confidence": 10})
+    assert m.scorecard == []          # old recordings / non-conforming models: section omitted
+    assert m.verdict.score == 50
+
+
+async def test_synthesize_no_facts_has_empty_scorecard():
+    res = await synthesize("https://x", [])
+    assert res.memo.scorecard == []
 
 
 # Regression: ISSUE-003 — a Fireworks 429 on the premium model killed every live

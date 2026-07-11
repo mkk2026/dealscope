@@ -73,7 +73,8 @@ async def _run(url: str):
            "confidence": m.confidence,
            "sources_collected": len(docs),
            "facts_extracted": len(m.facts),
-           "synth_fallback_model": synth.fallback_model}
+           "synth_fallback_model": synth.fallback_model,
+           "scorecard": [vars(s) for s in m.scorecard]}
     yield {"type": "done"}
 
 

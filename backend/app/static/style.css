@@ -78,6 +78,30 @@ main { display: grid; grid-template-columns: 240px 1fr; gap: 20px; padding: 24px
 .error-banner b { color: var(--amd); }
 .error-banner .error-detail { color: var(--muted); font-size: 12px; margin-top: 8px; word-break: break-word; }
 .fallback-note { color: var(--accent); font-size: 13px; margin-top: 10px; }
+
+/* Investor scorecard — one row per signal: name | bar+score | rationale+evidence */
+#scorecard { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 22px; margin-bottom: 18px; }
+#scorecard h3 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--accent); }
+#scorecard h3 small { text-transform: none; letter-spacing: 0; color: var(--muted);
+  font-weight: 400; margin-left: 8px; }
+.signal { display: grid; grid-template-columns: 150px 130px 44px 1fr; gap: 10px;
+  align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.signal:last-child { border-bottom: none; }
+.sname { font-size: 13px; font-weight: 600; }
+.sbar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.sfill { height: 100%; background: var(--green); border-radius: 3px; }
+.sfill.sred { background: var(--amd); }
+.sscore { font-size: 12px; }
+.sinsuff { grid-column: 2 / 4; color: var(--muted); font-size: 12px; font-style: italic; }
+.srat { color: var(--muted); font-size: 12px; }
+.srat a { color: var(--accent); text-decoration: none; margin-left: 2px; }
+@media (max-width: 720px) {
+  .signal { grid-template-columns: 1fr 90px 40px; }
+  .srat { grid-column: 1 / -1; padding-bottom: 4px; }
+  .sinsuff { grid-column: 2 / -1; }
+}
 #verdict .rec { font-size: 26px; font-weight: 800; }
 #verdict .bb { color: var(--muted); margin-top: 8px; }
 #verdict .bb b { color: var(--ink); }
