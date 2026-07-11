@@ -31,17 +31,21 @@ _MAX_EVIDENCE = 3
 
 _SIGNAL_IDS = ", ".join(SCORECARD_SIGNALS)
 
+# Field order in the shape is deliberate: verdict and confidence FIRST, scorecard
+# LAST. extract_json_object cannot repair truncated JSON, and a long reply that gets
+# cut off should lose scorecard tail entries (which degrade to insufficient_data),
+# never the verdict or confidence.
 _SYSTEM = (
     "You are a startup deal-screen analyst. You are given atomic, sourced facts about "
     "a company, grouped by category; each fact ends with its [source: URL]. "
-    "Produce a concise pre-meeting screen. "
-    "Return ONLY a JSON object with this shape: "
-    '{"section_summaries": {<category>: one-sentence summary}, '
-    '"risk_matrix": [{"category": str, "score": int 1-10, "reason": str}], '
-    '"verdict": {"recommendation": "Worth a call"|"Borderline"|"Pass", '
+    "Produce a concise pre-meeting screen. Keep the whole reply under 2500 tokens. "
+    "Return ONLY a JSON object with this shape, fields in this exact order: "
+    '{"verdict": {"recommendation": "Worth a call"|"Borderline"|"Pass", '
     '"score": int 0-100, "bull": str, "bear": str}, '
-    '"confidence": int 0-100, '
-    '"scorecard": [{"id": str, "score": int 0-10, "rationale": one sentence, '
+    '"confidence": int 0-100 (REQUIRED — calibrate to fact coverage), '
+    '"section_summaries": {<category>: one-sentence summary}, '
+    '"risk_matrix": [{"category": str, "score": int 1-10, "reason": str}], '
+    '"scorecard": [{"id": str, "score": int 0-10, "rationale": short phrase (max 12 words), '
     '"evidence": [up to 3 source URLs copied from the facts you used], '
     '"status": "scored"|"insufficient_data"}]}. '
     f"The scorecard is how an investor screens; produce one entry per id from: {_SIGNAL_IDS}. "
@@ -166,10 +170,11 @@ def _clamp_int(value, lo: int, hi: int, default: int) -> int:
 
 
 async def _complete_synthesis(client: LLMClient, user: str) -> Completion:
-    # 4000, not 3000: the scorecard grew the JSON output; a truncated response is
-    # unparseable and degrades the whole memo to the "synthesis unavailable" path.
+    # 6000, not 3000: the scorecard grew the JSON output and extract_json_object
+    # cannot repair truncation — a cut-off reply degrades the whole memo to the
+    # "synthesis unavailable" path. Headroom is cheap; a dead memo is not.
     return await client.complete(system=_SYSTEM, user=user, temperature=0.3,
-                                 max_tokens=4000, json_mode=True)
+                                 max_tokens=6000, json_mode=True)
 
 
 async def _complete_with_fallback(client: LLMClient, user: str) -> tuple[Completion, str | None]:
