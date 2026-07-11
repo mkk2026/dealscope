@@ -14,10 +14,17 @@ Testable against Fireworks before the pod exists:
 import asyncio
 from dataclasses import dataclass, field
 
+import openai
+
 from app.config import settings
 from app.llm.client import LLMClient, extractor_client
 from app.pipeline.jsonparse import extract_json_object
 from app.pipeline.models import CATEGORIES, Fact, SourceDocument
+
+# Same armor as the synthesis stage: one polite pause before retrying a page
+# that got a 429 — the retry happens while holding the concurrency semaphore,
+# which also naturally slows the whole stage down when the provider is throttling.
+_RATE_LIMIT_RETRY_DELAY_S = 5.0
 
 _SYSTEM = (
     "You extract atomic, verifiable facts from a single web page for a startup deal "
@@ -83,16 +90,24 @@ async def extract_facts(
 
     async def _one(doc: SourceDocument):
         async with sem:
-            completion = await client.complete(
-                system=_SYSTEM,
-                user=_build_user(doc, settings.extract_max_chars),
-                temperature=0.1,
-                max_tokens=2500,
-                json_mode=True,
-                # Keep gpt-oss in low-reasoning mode: fast, cheap, and it stops leaking
-                # chain-of-thought so the JSON lands cleanly on the high-volume stage.
-                reasoning_effort="low",
-            )
+            for attempt in (1, 2):
+                try:
+                    completion = await client.complete(
+                        system=_SYSTEM,
+                        user=_build_user(doc, settings.extract_max_chars),
+                        temperature=0.1,
+                        max_tokens=2500,
+                        json_mode=True,
+                        # Keep gpt-oss in low-reasoning mode: fast, cheap, and it stops
+                        # leaking chain-of-thought so the JSON lands cleanly on the
+                        # high-volume stage.
+                        reasoning_effort="low",
+                    )
+                    break
+                except openai.RateLimitError:
+                    if attempt == 2:
+                        raise
+                    await asyncio.sleep(_RATE_LIMIT_RETRY_DELAY_S)
         facts = _coerce_facts(completion.text, doc.url)
         if on_event:
             for f in facts:
@@ -104,14 +119,23 @@ async def extract_facts(
         return facts, completion
 
     result = ExtractionResult()
+    failures = 0
+    last_exc: Exception | None = None
     for outcome in await asyncio.gather(*(_one(d) for d in docs), return_exceptions=True):
         if isinstance(outcome, Exception):
             print(f"[extractor] page failed: {type(outcome).__name__}: {outcome}")
+            failures += 1
+            last_exc = outcome
             continue
         facts, completion = outcome
         result.facts.extend(facts)
         result.prompt_tokens += completion.prompt_tokens
         result.completion_tokens += completion.completion_tokens
+    if docs and failures == len(docs) and last_exc is not None:
+        # Every single page failed for the same class of reason (throttled key,
+        # dead provider). Surfacing the real error beats returning 0 facts and
+        # letting the screen degrade into a misleading "Pass — 0/100".
+        raise last_exc
     return result
 
 
