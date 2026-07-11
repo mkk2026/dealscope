@@ -86,6 +86,11 @@ main { display: grid; grid-template-columns: 240px 1fr; gap: 20px; padding: 24px
   letter-spacing: .08em; color: var(--accent); }
 #scorecard h3 small { text-transform: none; letter-spacing: 0; color: var(--muted);
   font-weight: 400; margin-left: 8px; }
+.rubric { font-size: 13px; margin: 0 0 12px; padding: 8px 12px; background: rgba(110,231,183,.06);
+  border: 1px solid var(--line); border-radius: 8px; }
+.rubric small { color: var(--muted); }
+.rcap { color: var(--amd); font-weight: 600; font-size: 12px; margin-left: 8px; }
+.rdiverge { color: var(--accent); font-size: 12px; margin-top: 6px; }
 .signal { display: grid; grid-template-columns: 150px 130px 44px 1fr; gap: 10px;
   align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .signal:last-child { border-bottom: none; }

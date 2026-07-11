@@ -15,6 +15,7 @@ from pathlib import Path
 from app.cost import compute_race
 from app.pipeline.collect import collect
 from app.pipeline.extractor import extract_facts
+from app.pipeline.rubric import compute_rubric
 from app.pipeline.synthesizer import synthesize
 
 # Recordings live here; replay only ever reads a basename from this dir (no traversal).
@@ -74,7 +75,9 @@ async def _run(url: str):
            "sources_collected": len(docs),
            "facts_extracted": len(m.facts),
            "synth_fallback_model": synth.fallback_model,
-           "scorecard": [vars(s) for s in m.scorecard]}
+           "scorecard": [vars(s) for s in m.scorecard],
+           "rubric": (vars(r) if (r := compute_rubric(
+               m.scorecard, m.verdict.score if m.verdict else None)) else None)}
     yield {"type": "done"}
 
 

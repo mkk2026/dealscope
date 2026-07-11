@@ -124,6 +124,30 @@ Recorded runs ship in [`backend/demo/`](backend/demo/) so the gallery works out 
 
 ---
 
+## The scoring algorithm — how DealScope thinks like an investor
+
+Every screen produces an **investor scorecard**: ten signals scored 0-10, each citing
+the exact source URLs it came from — or honestly reading *"insufficient public data"*
+when the public footprint can't support a score. Hallucinated evidence is structurally
+impossible: the server rejects any citation that doesn't match a collected fact.
+
+On top of the scorecard sits a **research-weighted rubric score**. The weights aren't
+our opinion — they follow the published evidence on how early-stage investors decide:
+
+| Cluster | Signals | Weight | Grounding |
+|---|---|---:|---|
+| Team | technical team · hiring velocity | 28 | 53% of early-stage VCs rank team the #1 factor (Gompers et al., 885-VC survey, *J. Financial Economics* 2020) |
+| Traction | customer evidence · shipping cadence · GitHub momentum | 35 | "No market need" causes ~42% of startup deaths (CB Insights post-mortems) — demand evidence is the strongest screen |
+| Business & moat | revenue signals · moat evidence | 20 | Business model cited important by 83% of VCs |
+| Market timing | market timing | 12 | 68% importance; bad timing kills ~29% |
+| Capital | capital efficiency | 5 | Cash-out is the symptom, rarely the cause |
+| Red flags | red flags | veto | Doesn't average — a high red-flag score **caps** the deal instead of being diluted |
+
+Three honesty rules: the rubric renormalizes over signals that actually have evidence
+(gaps don't silently drag the score down); fewer than 4 evidence-backed signals → no
+rubric score at all (no fake precision); and when the model's holistic verdict disagrees
+with the rubric by more than 20 points, **both are shown** — disagreement is information.
+
 ## What's under the hood
 
 - **Source-traceable by construction** — facts carry their origin URL through the whole

@@ -97,7 +97,7 @@ function onMemo(ev) {
       + `<div class="bb"><b>Bull:</b> ${esc(ev.verdict.bull)}</div>`
       + `<div class="bb"><b>Bear:</b> ${esc(ev.verdict.bear)}</div>` + fb;
   }
-  renderScorecard(ev.scorecard);  // absent/empty (old replays) ⇒ section stays hidden
+  renderScorecard(ev.scorecard, ev.rubric);  // absent/empty (old replays) ⇒ section stays hidden
   const summaries = ev.section_summaries || {};
   const out = [];
   for (const cat of CATS) {
@@ -114,7 +114,18 @@ function onMemo(ev) {
     .map((r) => `<div class="riskchip">${esc(r.category)} <b>${r.score}/10</b></div>`).join("");
 }
 
-function renderScorecard(list) {
+function renderRubric(rubric) {
+  if (!rubric) return "";
+  const cap = rubric.red_flag_capped
+    ? ` <span class="rcap">⚠ red flags cap this deal at Borderline</span>` : "";
+  const div = rubric.diverges_from_model
+    ? `<div class="rdiverge">Model instinct and research rubric disagree by 20+ points — read the evidence before trusting either.</div>` : "";
+  return `<div class="rubric">Research-weighted score: <b>${rubric.score}/100</b>`
+    + ` <small>· based on ${rubric.scored_signals}/${rubric.total_signals} evidence-backed signals`
+    + ` · weights from Gompers et al. (JFE 2020) + CB Insights post-mortems</small>${cap}${div}</div>`;
+}
+
+function renderScorecard(list, rubric) {
   if (!Array.isArray(list) || !list.length) { $("scorecard").innerHTML = ""; return; }
   const rows = list.map((s) => {
     const links = (s.evidence || []).map((u) =>
@@ -130,6 +141,7 @@ function renderScorecard(list) {
   }).join("");
   $("scorecard").innerHTML =
     `<h3>Investor scorecard <small>every score cites its sources — or admits it can't</small></h3>`
+    + renderRubric(rubric)
     + `<div class="signals">${rows}</div>`;
 }
 
