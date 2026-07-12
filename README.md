@@ -11,7 +11,7 @@
 [![AMD](https://img.shields.io/badge/AMD-Instinct%20via%20Fireworks-ED1C24?logo=amd&logoColor=white)](https://fireworks.ai/)
 [![Fireworks AI](https://img.shields.io/badge/Fireworks-AI-6D28D9)](https://fireworks.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-56%20passing-brightgreen)]()
 [![Live Demo](https://img.shields.io/badge/▶_Live_Demo-corebrim24--dealscope.hf.space-ff4d4d)](https://corebrim24-dealscope.hf.space)
 
 Built for the **AMD Developer Hackathon: ACT II** — Track 3 (Unicorn).
@@ -169,7 +169,7 @@ AMD-hosted models via `Fireworks` · `Docker` · `pytest`
 ```bash
 cd backend
 pip install -r requirements-dev.txt
-pytest                # 33 unit tests (parsers, cost math, memo, collectors)
+pytest                # 56 unit tests (parsers, cost math, memo, scorecard, rubric, collectors)
 pytest -m integration # golden-company harness (hits the network)
 ```
 
