@@ -46,7 +46,7 @@ _SYSTEM = (
     '"section_summaries": {<category>: one-sentence summary}, '
     '"risk_matrix": [{"category": str, "score": int 1-10, "reason": str}], '
     '"scorecard": [{"id": str, "score": int 0-10, "rationale": short phrase (max 12 words), '
-    '"evidence": [up to 3 source URLs copied from the facts you used], '
+    '"evidence": [up to 3 source URLs copied EXACTLY from the [source: ...] of the facts you used], '
     '"status": "scored"|"insufficient_data"}]}. '
     f"The scorecard is how an investor screens; produce one entry per id from: {_SIGNAL_IDS}. "
     "Score each signal 0-10 strictly from the provided facts and cite the exact source "
@@ -86,17 +86,25 @@ def _facts_payload(facts: list[Fact]) -> str:
     return "\n".join(lines) if lines else "(no facts extracted)"
 
 
+def _norm_url(url: str) -> str:
+    """Match-key for evidence checking: models cite 'https://X.com/' where the fact
+    says 'https://x.com' — trailing-slash and case noise must not zero a signal."""
+    return url.strip().rstrip("/").lower()
+
+
 def _build_scorecard(obj: dict, valid_urls: set[str]) -> list[Signal]:
     """Validate the model's scorecard. Unknown ids are dropped, scores clamped, and
     evidence is checked against the source URLs of collected facts — a signal whose
     evidence doesn't trace back to a collected source is downgraded to
-    insufficient_data, so hallucinated evidence is structurally impossible.
+    insufficient_data, so hallucinated evidence is structurally impossible. Matched
+    evidence is rewritten to the CANONICAL crawled URL, never the model's variant.
     A missing/malformed scorecard returns [] (the UI simply omits the section —
     this is also what keeps pre-scorecard replay recordings rendering cleanly)."""
     raw = obj.get("scorecard")
     if not isinstance(raw, list) or not raw:
         return []
 
+    canonical = {_norm_url(u): u for u in valid_urls}
     by_id: dict[str, Signal] = {}
     for s in raw:
         if not isinstance(s, dict):
@@ -104,8 +112,12 @@ def _build_scorecard(obj: dict, valid_urls: set[str]) -> list[Signal]:
         sid = str(s.get("id", "")).lower().strip()
         if sid not in SCORECARD_SIGNALS:
             continue
-        evidence = [u for u in (s.get("evidence") or [])
-                    if isinstance(u, str) and u in valid_urls][:_MAX_EVIDENCE]
+        evidence = []
+        for u in (s.get("evidence") or []):
+            hit = canonical.get(_norm_url(u)) if isinstance(u, str) else None
+            if hit and hit not in evidence:
+                evidence.append(hit)
+        evidence = evidence[:_MAX_EVIDENCE]
         scored = bool(evidence) and s.get("status") != "insufficient_data"
         by_id[sid] = Signal(
             id=sid,

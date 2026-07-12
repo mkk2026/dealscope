@@ -96,6 +96,19 @@ def test_build_scorecard_validates_clamps_and_fills_all_signals():
     assert by["market_timing"].status == "insufficient_data"     # model skipped it
 
 
+def test_build_scorecard_evidence_matches_despite_slash_and_case_noise():
+    # Regression: the model cited 'https://X/pricing/' for a fact crawled as
+    # 'https://x/pricing' and the whole signal was zeroed to insufficient_data.
+    obj = {"scorecard": [
+        {"id": "technical_team", "score": 8, "rationale": "r",
+         "evidence": ["https://GITHUB.com/x/", "https://github.com/x"]},  # both → one canonical
+    ]}
+    sc = _build_scorecard(obj, _VALID_URLS)
+    by = {s.id: s for s in sc}
+    assert by["technical_team"].status == "scored"
+    assert by["technical_team"].evidence == ["https://github.com/x"]     # canonical, deduped
+
+
 def test_build_scorecard_absent_or_malformed_returns_empty():
     assert _build_scorecard({}, _VALID_URLS) == []
     assert _build_scorecard({"scorecard": {}}, _VALID_URLS) == []
