@@ -83,7 +83,7 @@ def test_build_scorecard_validates_clamps_and_fills_all_signals():
          "evidence": ["https://fake.invented/url"]},                     # unverifiable → coerced
         {"id": "red_flags", "score": 3, "rationale": "stale blog",
          "evidence": ["https://x/pricing", "https://github.com/x",
-                      "https://x/pricing", "https://github.com/x"]},     # capped at 3
+                      "https://x/pricing", "https://github.com/x"]},     # duplicates deduped
         "not-a-dict",                                                    # tolerated
     ]}
     sc = _build_scorecard(obj, _VALID_URLS)
@@ -92,7 +92,7 @@ def test_build_scorecard_validates_clamps_and_fills_all_signals():
     assert by["technical_team"].score == 10 and by["technical_team"].status == "scored"
     assert by["hiring_velocity"].status == "insufficient_data"   # fake evidence rejected
     assert by["hiring_velocity"].score == 0
-    assert len(by["red_flags"].evidence) == 3
+    assert by["red_flags"].evidence == ["https://x/pricing", "https://github.com/x"]
     assert by["market_timing"].status == "insufficient_data"     # model skipped it
 
 
